@@ -1,0 +1,148 @@
+!-------------------------------------------------------------------------------
+!                           Caso de estudio Redes 3
+!                                Config para D1
+!-------------------------------------------------------------------------------
+
+hostname D1
+
+ip routing
+
+!                Las LAN bajo R4 tendran 5 VLANs configuradas.
+
+vlan 10
+  name AMARILLO
+vlan 20
+  name AZUL
+vlan 30
+  name ROJO
+vlan 40
+  name GRIS
+vlan 50
+  name VERDE
+
+!      Los switches bajo R4 tendran la siguiente distribucion de puertos:
+! 
+!                         * 1  - 6 VLAN10 AMARILLO
+!                         * 7  - 12 VLAN20 AZUL
+!                         * 13 - 28 VLAN30 ROJO
+!                         * 19 - 23 Troncal con nativa 40
+
+interface range fastethernet0/1 - 6
+  switchport access vlan 10
+  switchport mode access
+
+  spanning-tree portfast
+  spanning-tree bpduguard enable
+
+interface range fastethernet0/7 - 12
+  switchport access vlan 20
+  switchport mode access
+
+  spanning-tree portfast
+  spanning-tree bpduguard enable
+
+interface range fastethernet0/13 - 18
+  switchport access vlan 30
+  switchport mode access
+
+  spanning-tree portfast
+  spanning-tree bpduguard enable
+
+interface range fastethernet0/19 - 23
+  sw mode trunk
+  sw trunk native vlan 40
+
+! Garantice que D1 sea raiz de VLAN 10, VLAN 20, VLAN 30
+spanning-tree vlan 10,20,30 root primary
+
+!       En los switches multicapa, el puerto 24 sera enrutado contra R4
+interface fastethernet0/24
+  no switchport
+  ip address 172.16.3.238 255.255.255.252
+  no shutdown
+
+!               Cambie a la version rapida en todos los switches
+spanning-tree mode rapid-pvst
+
+!Tanto D1 como D2 seran los gateway para las VLANs. Construya Gateway virtuales
+!             que sigan la misma designacion de equipos que en STP
+
+interface vlan 10
+  ip address 172.16.0.1 255.255.254.0
+  no shutdown
+
+  ! helper address
+  ip helper-address 172.16.3.237
+
+  standby 10 ip 172.16.0.3
+  standby 10 priority 100
+  standby 10 preempt
+
+interface vlan 20
+  ip address 172.16.0.193 255.255.255.224
+  no shutdown
+
+  ! helper address
+  ip helper address 172.16.3.237
+
+  standby 20 ip 172.16.0.195
+  standby 20 priority 100
+  standby 20 preempt
+
+interface vlan 30
+  ip address 172.16.3.129 255.255.255.192
+  no shutdown
+
+  ! helper address
+  ip helper address 172.16.3.237
+
+  standby 30 ip 172.16.3.131
+  standby 30 priority 100
+  standby 30 preempt
+
+interface vlan 40
+  ip address 172.16.3.225 255.255.255.248
+  no shutdown
+
+  ! helper address
+  ip helper address 172.16.3.237
+
+  standby 40 ip 172.16.3.227
+  standby 40 priority 150
+  standby 40 preempt
+
+interface vlan 50
+  ip address 172.16.3.1 255.255.255.128
+  no shutdown
+
+  ! helper address
+  ip helper address 172.16.3.237
+
+  standby 50 ip 172.16.3.3
+  standby 50 priority 150
+  standby 50 preempt
+
+! Construya el EtherChannel entre D1 y D2
+
+interface range fastethernet 0/22 - 23
+  channel-group 1 mode on
+
+! Configure en su red interna entre routers y switches multicapa
+router ospf 1
+! El RID debera hacer alusion al equipo
+  router-id 11.11.11.11
+  network 172.16.0.0 0.0.255.255 area 0
+
+! Configure redireccionamiento de puertos para acceder por SSH a todos los
+! switches y routers desde la red M2-101
+ip domain-name CCNA.com
+crypto key generate rsa
+
+line vty 0 15
+  transport input ssh
+  login local
+
+username admin privilege 15 secret admin
+
+! Y los demas routers y switches para que tomen la hora de alli
+ntp server 172.16.4.1

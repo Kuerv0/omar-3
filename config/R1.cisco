@@ -1,0 +1,103 @@
+!-------------------------------------------------------------------------------
+!                           Caso de estudio Redes 3
+!                                Config para R1
+!-------------------------------------------------------------------------------
+
+hostname R1
+
+interface gigabitethernet0/0/0
+  ip address 172.16.3.233 255.255.255.252
+  no shutdown
+
+interface gigabitethernet0/0/1
+no shutdown
+
+interface serial 0/1/0
+  ip address 172.16.4.1 255.255.255.252
+  no shutdown
+
+! Ruta por defecto
+ip route 0.0.0.0 0.0.0.0 172.16.4.5
+
+! Configure en su red interna entre routers y switches multicapa
+router ospf 1
+! El RID debera hacer alusion al equipo
+  router-id 1.1.1.1
+  network 172.16.0.0 0.0.255.255 area 0
+! Redistribuya la ruta por defecto
+  default-information originate
+! Manipule los costos de tal manera que cada VLAN seleccione el mejor camino a
+! interne' siempre sea pasando por R2
+  auto-cost reference-bandwidth 1000
+
+! Garantice que el enlace inter-routers, R1 sea el DR de la coumunicacion
+! This might need a clear and a show to check and stuff
+interface gigabitethernet0/0/0
+  ip ospf priority 69
+
+! Configure un PAT dinamico para VLAN 10, VLAN20, VLAN30 y R3 LAN en R1
+ip nat pool DEADPOOL 209.165.200.226 209.165.200.240 netmask 255.255.255.224
+! VLAN 10
+access-list 1 permit 172.16.0.0 0.0.1.255
+! VLAN 20
+access-list 1 permit 172.16.3.192 0.0.0.31
+! VLAN 30
+access-list 1 permit 172.16.3.128 0.0.0.63
+! R3 LAN
+access-list 1 permit 172.16.2.0 0.0.0.255
+
+ip nat inside source list 1 pool DEADPOOL overload
+
+interface serial0/1/0
+  ip nat inside
+
+interface Gig0/0/1
+  ip nat outside
+
+! Configure redireccionamiento de puertos para acceder por SSH a todos los
+! switches y routers desde la red M2-101
+
+! A0
+ip nat inside source static tcp 172.16.2.2 22 69.69.69.69 22
+! A1
+ip nat inside source static tcp 172.16.3.4 22 69.69.69.69 22
+! A2
+ip nat inside source static tcp 172.16.3.5 22 69.69.69.69 22
+! A3 
+ip nat inside source static tcp 172.16.3.6 22 69.69.69.69 22
+! D1
+ip nat inside source static tcp 172.16.3.238 22 69.69.69.69 22
+! D2
+ip nat inside source static tcp 172.16.3.242 22 69.69.69.69 22
+! R1
+ip nat inside source static tcp no existe 22 69.69.69.69 22
+! R2
+ip nat inside source static tcp 172.16.4.2 22 69.69.69.69 22
+! R3
+ip nat inside source static tcp 172.16.3.254 22 69.69.69.69 22
+! R4
+ip nat inside source static tcp 172.16.3.246 22 69.69.69.69 22
+
+! Access list
+ip access-list extended SSH
+  deny tcp 69.69.69.69 255.255.255.254 any eq 22
+  permit ip any any
+
+interface serial
+  ip access-group SSH in
+
+!Configure R1 como maestro NTP
+ntp master 1
+clock timezone COL -5
+clock set 15:30:00 19 FEB 2025
+
+! Configure redireccionamiento de puertos para acceder por SSH a todos los
+! switches y routers desde la red M2-101
+ip domain-name CCNA.com
+crypto key generate rsa
+
+line vty 0 15
+  transport input ssh
+  login local
+
+username admin privilege 15 secret admin

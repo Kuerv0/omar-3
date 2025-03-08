@@ -1,0 +1,78 @@
+!-------------------------------------------------------------------------------
+!                           Caso de estudio Redes 3
+!                                Config para A2
+!-------------------------------------------------------------------------------
+
+hostname A2
+
+!                Las LAN bajo R4 tendran 5 VLANs configuradas.
+
+vlan 10
+  name AMARILLO
+vlan 20
+  name AZUL
+vlan 30
+  name ROJO
+vlan 40
+  name GRIS
+vlan 50
+  name VERDE
+
+!      Los switches bajo R4 tendran la siguiente distribucion de puertos:
+! 
+!                         * 1  - 6 VLAN10 AMARILLO
+!                         * 7  - 12 VLAN20 AZUL
+!                         * 13 - 28 VLAN30 ROJO
+!                         * 19 - 23 Troncal con nativa 40
+
+interface range fastethernet0/1 - 6
+  switchport access vlan 10
+  switchport mode access
+
+  spanning-tree portfast
+  spanning-tree bpduguard enable
+
+interface range fastethernet0/7 - 12
+  switchport access vlan 20
+  switchport mode access
+
+  spanning-tree portfast
+  spanning-tree bpduguard enable
+
+interface range fastethernet0/13 - 18
+  switchport access vlan 30
+  switchport mode access
+
+  spanning-tree portfast
+  spanning-tree bpduguard enable
+
+interface range fastethernet0/19 - 23
+  sw mode trunk
+  sw trunk native vlan 40
+
+!               Cambie a la version rapida en todos los switches
+spanning-tree mode rapid-pvst
+
+!    Asigne direccion de gestion a los switches A1, A2, A3 desde la VLAN50. 
+
+interface vlan 50
+  ip address 172.16.3.5 255.255.255.128
+  no shutdown
+
+!              Garantice que sean alcanzables desde otras redes.
+
+ip default-gateway 172.16.3.3
+
+! Configure redireccionamiento de puertos para acceder por SSH a todos los
+! switches y routers desde la red M2-101
+ip domain-name CCNA.com
+crypto key generate rsa
+
+line vty 0 15
+  transport input ssh
+  login local
+
+username admin privilege 15 secret admin
+
+! Y los demas routers y switches para que tomen la hora de alli
+ntp server 172.16.4.1

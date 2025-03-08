@@ -1,0 +1,43 @@
+!-------------------------------------------------------------------------------
+!                           Caso de estudio Redes 3
+!                                Config para A0
+!-------------------------------------------------------------------------------
+
+hostname A0
+
+!                         Garantice lo mismo para A0.
+
+interface vlan 1
+  ip address 172.16.2.2 255.255.255.0
+  no shutdown
+
+ip default-gateway 172.16.2.1
+
+!Habilite seguridad de puertos en A0 en el puerto hacia PC0 que permita aprender
+!3 direcciones de forma automatica y que cualquier violacion bloquee y notifique
+
+interface fastethernet0/2
+  switchport mode access
+  switchport access vlan 1
+
+  spanning-tree portfast
+  spanning-tree bpduguard enable
+
+  switchport port-security
+  switchport port-security mac-address sticky
+  switchport port-security maximum 3
+  switchport port-security violation restrict
+
+! Configure redireccionamiento de puertos para acceder por SSH a todos los
+! switches y routers desde la red M2-101
+ip domain-name CCNA.com
+crypto key generate rsa
+
+line vty 0 15
+  transport input ssh
+  login local
+
+username admin privilege 15 secret admin
+
+! Y los demas routers y switches para que tomen la hora de alli
+ntp server 172.16.4.1

@@ -1,0 +1,81 @@
+!-------------------------------------------------------------------------------
+!                           Caso de estudio Redes 3
+!                                Config para R2
+!-------------------------------------------------------------------------------
+
+hostname R2
+
+interface serial 0/1/0
+  ip address 172.16.3.245 255.255.255.252
+  no shutdown
+
+interface serial 0/1/1
+  ip address 172.16.3.253 255.255.255.252
+  no shutdown
+
+interface serial 0/2/0
+  ip address 172.16.4.2 255.255.255.252
+  no shutdown
+
+!R2 sera el servidor DHCP para VLAN 10, VLAN 20, VLAN 30 y R3 LAN. Aparte las
+!primeras 5 direcciones para equipos con direccionamiento estatico. Configure el
+!DNS como 8.8.8.8 y un arrendamiento de 7 dias 12 horas.
+
+ip dhcp excluded-address 172.16.0.1 172.16.0.5
+ip dhcp excluded-address 172.16.3.193 172.16.3.197
+ip dhcp excluded-address 173.16.3.129 172.16.3.133
+ip dhcp excluded-address 172.16.2.1 172.16.2.5
+
+ip dhcp pool DEADPOOL-AMARILLO
+    network 172.16.0.0 255.255.254.0
+    default-router 172.16.0.3
+    dns-server 8.8.8.8
+    domain-name amarillo.com.co
+    lease 7 12
+
+ip dhcp pool DEADPOOL-AZUL
+    network 172.16.3.192 255.255.255.224
+    default-router 172.16.3.195
+    dns-server 8.8.8.8
+    domain-name azul.com.co
+    lease 7 12
+
+ip dhcp pool DEADPOOL-ROJO
+    network 172.16.3.128 255.255.255.192
+    default-router 172.16.3.131
+    dns-server 8.8.8.8
+    domain-name rojo.com.co
+    lease 7 12
+
+ip dhcp pool DEADPOOL-R3
+    network 172.16.2.0 255.255.255.0
+    default-router 172.16.2.1
+    dns-server 8.8.8.8
+    domain-name verde.com.co
+    lease 7 12
+
+! Configure en su red interna entre routers y switches multicapa
+router ospf 1
+! El RID debera hacer alusion al equipo
+  router-id 2.2.2.2
+  network 172.16.0.0 0.0.255.255 area 0
+! Manipule los costos de tal manera que cada VLAN seleccione el mejor camino a
+! interne' siempre sea pasando por R2
+  auto-cost reference-bandwidth 1000
+
+interface Serial 0/2/0
+  ip ospf cost 1
+
+! Configure redireccionamiento de puertos para acceder por SSH a todos los
+! switches y routers desde la red M2-101
+ip domain-name CCNA.com
+crypto key generate rsa
+
+line vty 0 15
+  transport input ssh
+  login local
+
+username admin privilege 15 secret admin
+
+! Y los demas routers y switches para que tomen la hora de alli
+ntp server 172.16.4.1

@@ -1,0 +1,45 @@
+!-------------------------------------------------------------------------------
+!                           Caso de estudio Redes 3
+!                                Config para R4
+!-------------------------------------------------------------------------------
+
+hostname R4
+
+interface gigabitethernet0/0/0
+  ip address 172.16.3.241 255.255.255.252
+  no shutdown
+
+interface gigabitethernet0/0/1
+  ip address 172.16.3.237 255.255.255.252
+  no shutdown
+
+interface serial 0/1/0
+  ip address 172.16.3.250 255.255.255.252
+  no shutdown
+
+interface serial 0/1/1
+  ip address 172.16.3.246 255.255.255.252
+  no shutdown
+
+! Configure en su red interna entre routers y switches multicapa
+router ospf 1
+! El RID debera hacer alusion al equipo
+  router-id 4.4.4.4
+  network 172.16.0.0 0.0.255.255 area 0
+! Manipule los costos de tal manera que cada VLAN seleccione el mejor camino a
+! interne' siempre sea pasando por R2
+  auto-cost reference-bandwidth 1000
+
+! Configure redireccionamiento de puertos para acceder por SSH a todos los
+! switches y routers desde la red M2-101
+ip domain-name CCNA.com
+crypto key generate rsa
+
+line vty 0 15
+  transport input ssh
+  login local
+
+username admin privilege 15 secret admin
+
+! Y los demas routers y switches para que tomen la hora de alli
+ntp server 172.16.4.1
